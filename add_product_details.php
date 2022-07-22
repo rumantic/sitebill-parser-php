@@ -26,15 +26,37 @@ class ProductExtractor
 
     function __construct()
     {
-        $this->mongo = new MongoDB\Client("mongodb://localhost:27017");
-        $this->collection = $this->mongo->youla->parsed;
         $this->log = new Logger('parser');
-        $this->log->pushHandler(new StreamHandler('parser.log', Level::Warning));
+        $this->log->pushHandler(new StreamHandler(getenv('CRON_LOG') ?: 'parser.log', Level::Warning));
+
+        $this->mongo = $this->get_connection();
+        $this->collection = $this->mongo->youla->parsed;
+    }
+
+    function get_connection () {
+        $MONGO_HOST = getenv('MONGO_HOST') ?: 'not_defined';
+        $MONGO_USER = getenv('MONGO_USER') ?: '';
+        $MONGO_PASS = getenv('MONGO_PASS') ?: '';
+        $MONGO_PORT = getenv('MONGO_PORT') ?: 27017;
+        if ( $MONGO_HOST == 'not_defined' ) {
+            $this->error('MONGO_HOST not defined');
+            exit;
+        } elseif ( $MONGO_HOST == '192.168.1.37') {
+            $uri = "mongodb://$MONGO_HOST:$MONGO_PORT";
+        } else {
+            $uri = "mongodb://$MONGO_USER:$MONGO_PASS@$MONGO_HOST:$MONGO_PORT";
+        }
+        return new MongoDB\Client($uri);
     }
 
     function warning( $message ) {
         echo $message."\n";
         $this->log->warning($message);
+    }
+
+    function error( $message ) {
+        echo $message."\n";
+        $this->log->error($message);
     }
 
     function next() {
@@ -48,7 +70,9 @@ class ProductExtractor
             ['_id' => $item['_id']],
             ['$set' => ['product_details' => $product_details]]
         );
-        $this->warning("Record id = {$item['_id']}, {$product_details['products'][0]['name']}, updated: " . $update_result->getModifiedCount());
+        $this->warning("Record id = {$item['_id']},".
+        "{$product_details['products'][0]['name']},".
+        date('Y-m-d H:i:s',$product_details['products'][0]['datePublished']['timestamp']).", updated: " . $update_result->getModifiedCount());
     }
 
     function parse_item ($item) {
