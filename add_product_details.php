@@ -8,7 +8,7 @@ $product_extractor = new ProductExtractor();
 try {
     //for ($i = 0; $i < 160; $i++) {
         $product_extractor->next();
-        //sleep(10);
+        //sleep(1);
     //}
 } catch (Exception $e) {
     echo $e->getMessage()."\n";
@@ -20,7 +20,7 @@ class ProductExtractor
 
     private \MongoDB\Client $mongo;
     private \MongoDB\Collection $collection;
-    private $youla_url = 'https://youla.io';
+    private $youla_url = 'https://youla.ru';
 
     private Logger $log;
 
@@ -61,8 +61,13 @@ class ProductExtractor
 
     function next() {
         $empty_item = $this->get_empty_item();
-        $product_details = $this->parse_item($empty_item);
-        $this->update_item($empty_item, $product_details);
+        try {
+            $product_details = $this->parse_item($empty_item);
+            $this->update_item($empty_item, $product_details);
+        } catch ( Exception $e ) {
+            $this->delete_item($empty_item);
+
+        }
     }
 
     function update_item ( $item, $product_details ) {
@@ -73,6 +78,13 @@ class ProductExtractor
         $this->warning("Record id = {$item['_id']},".
         "{$product_details['products'][0]['name']},".
         date('Y-m-d H:i:s',$product_details['products'][0]['datePublished']['timestamp']).", updated: " . $update_result->getModifiedCount());
+    }
+
+    function delete_item ( $item ) {
+        $result = $this->collection->deleteOne(
+            ['_id' => $item['_id']]
+        );
+        $this->warning("Delete record id = {$item['_id']} ");
     }
 
     function parse_item ($item) {
@@ -93,6 +105,10 @@ class ProductExtractor
 
     function parse_page( $url )
     {
+        if ( $this->get_http_response_code($url) != "200"){
+            throw new Exception('404');
+        }
+
         $content = file_get_contents($url);
         $pattern = '/window\.__YOULA_STATE__ = (.*);/';
         preg_match($pattern, $content, $matches);
@@ -104,5 +120,10 @@ class ProductExtractor
             return $youla_state_array['entities'];
         }
         throw new Exception('Cant parse url: '.$url);
+    }
+
+    function get_http_response_code($url) {
+        $headers = get_headers($url);
+        return substr($headers[0], 9, 3);
     }
 }
