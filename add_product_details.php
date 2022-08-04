@@ -65,6 +65,7 @@ class ProductExtractor
             $product_details = $this->parse_item($empty_item);
             $this->update_item($empty_item, $product_details);
         } catch ( Exception $e ) {
+            $this->error('Exception '.$e->getMessage());
             $this->delete_item($empty_item);
 
         }
@@ -105,8 +106,9 @@ class ProductExtractor
 
     function parse_page( $url )
     {
-        if ( $this->get_http_response_code($url) != "200"){
-            throw new Exception('404');
+        $response_code = $this->get_http_response_code($url);
+        if ( $response_code != "200" and $response_code != "429" ){
+            throw new Exception('http response = '.$response_code);
         }
 
         $content = file_get_contents($url);
