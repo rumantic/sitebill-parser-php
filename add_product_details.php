@@ -11,7 +11,7 @@ try {
         //sleep(1);
     //}
 } catch (Exception $e) {
-    echo $e->getMessage()."\n";
+    echo date('Y-m-d H:i:s').' '.$e->getMessage()."\n";
 }
 exit;
 
