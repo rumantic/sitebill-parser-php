@@ -61,6 +61,9 @@ class ProductExtractor
 
     function next() {
         $empty_item = $this->get_empty_item();
+        if ( !$empty_item ) {
+            return false;
+        }
         try {
             $product_details = $this->parse_item($empty_item);
             $this->update_item($empty_item, $product_details);
@@ -102,7 +105,7 @@ class ProductExtractor
         if ( $result ) {
             return $result;
         }
-        throw new Exception('Cant find records with null details');
+        return false;
     }
 
     function parse_page( $url )
